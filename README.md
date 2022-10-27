@@ -7,3 +7,4 @@ The Arduino breadbord setup is inside a miniature house, and the connected Unity
 - https://docs.arduino.cc/built-in-examples/analog/Smoothing
 - https://create.arduino.cc/projecthub/raisingawesome/unity-game-engine-and-arduino-serial-communication-12fdd5
 - https://forum.unity.com/threads/mapping-or-scaling-values-to-a-new-range.180090/
+-https://gamedev.stackexchange.com/questions/74393/how-to-edit-key-value-pairs-like-a-dictionary-in-unitys-inspector

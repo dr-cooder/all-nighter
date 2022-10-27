@@ -26,7 +26,27 @@ public class SceneMgrScript:MonoBehaviour {
     public Color daySkyColor;
     public Color nightSkyColor;
     [Range(0f, 1f)]
-    public float ambientStrength = 0.5f;
+    public float skyAmbientStrength = 0.5f;
+    [Range(0f, 1f)]
+    public float lampAmbientStrength = 0.25f;
+
+    [System.Serializable]
+    public class AnimFrame
+    {
+        public UnityEngine.Object model;
+        public int duration = 1;
+    }
+
+    [System.Serializable]
+    public class AnimList
+    {
+        public List<AnimFrame> work;
+        public List<AnimFrame> switchLight;
+        public int switchLightOnFrame;
+    }
+
+    [Header("Animation")]
+    public AnimList animations;
 
     private int readingCount = 0;
     private int[] readings;
@@ -40,6 +60,7 @@ public class SceneMgrScript:MonoBehaviour {
     private float sinceLastAnimFrame = 0;
 
     private Color skyColor = new Color();
+    private Color ambientColor = new Color();
 
     void Start()
     {
@@ -72,8 +93,11 @@ public class SceneMgrScript:MonoBehaviour {
         readingAvg = readingTotal / readingCount;
 
         skyColor = Color.Lerp(nightSkyColor, daySkyColor, Mathf.InverseLerp(minLight, maxLight, readingAvg));
-        RenderSettings.ambientSkyColor = Color.Lerp(Color.black, skyColor, ambientStrength);
         mainCamera.backgroundColor = skyColor;
+
+        ambientColor = Color.Lerp(Color.black, skyColor, skyAmbientStrength);
+        if (lightsOn) ambientColor += Color.Lerp(Color.black, ceilingLamp.color, lampAmbientStrength);
+        RenderSettings.ambientSkyColor = ambientColor;
 
         if (guyWorking)
         {
