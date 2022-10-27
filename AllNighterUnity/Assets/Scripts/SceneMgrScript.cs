@@ -5,16 +5,27 @@ using UnityEngine;
 using System.IO.Ports; // For serial
 
 public class SceneMgrScript:MonoBehaviour {
+    public Camera mainCamera;
     public string sPort = "COM4";
     SerialPort stream; // From the Nano
     public int baud = 9600;
-    public int nightThreshold = 15; // CHANGE THIS ACCORDING TO THE ROOM'S LIGHT LEVELS
-    public int dayThreshold = 30; // THIS TOO
+
+    // CHANGE THESE ACCORDING TO THE ROOM'S LIGHT LEVELS
+    public int minLight = 10;
+    public int nightUnder = 15;
+    public int dayOver = 30;
+    public int maxLight = 50;
+    public int ledBias = 10;
+
+    public Color dayAmbient;
+    public Color nightAmbient;
 
     private bool lightsOn = false;
     private bool lightsShouldBeOn = false;
     private bool guyWorking = true;
     private float guyAnimTime = 0;
+
+    private Color skyColor = new Color();
 
     void Start()
     {
@@ -25,9 +36,13 @@ public class SceneMgrScript:MonoBehaviour {
     void Update()
     {
         int sunLevel = int.Parse(stream.ReadLine());
+        if (lightsOn) sunLevel -= ledBias;
+        skyColor = Color.Lerp(nightAmbient, dayAmbient, Mathf.InverseLerp(minLight, maxLight, sunLevel));
+        RenderSettings.ambientSkyColor = skyColor;
+        mainCamera.backgroundColor = skyColor;
         if (guyWorking)
         {
-            if (sunLevel < nightThreshold && !lightsOn)
+            if (sunLevel < nightUnder && !lightsOn)
             {
                 lightsShouldBeOn = true;
                 guyWorking = false;
@@ -35,7 +50,7 @@ public class SceneMgrScript:MonoBehaviour {
                 // Play "turning lights on" animation
                 Debug.Log("Night already?!");
             }
-            if (sunLevel > dayThreshold && lightsOn)
+            if (sunLevel > dayOver && lightsOn)
             {
                 lightsShouldBeOn = false;
                 guyWorking = false;
@@ -46,7 +61,7 @@ public class SceneMgrScript:MonoBehaviour {
         }
         else
         {
-            // Manage turning on light animation
+            // Manage turning on/off light animation
             guyAnimTime += Time.deltaTime;
             if (guyAnimTime > 1)
             {
