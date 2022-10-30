@@ -8,6 +8,7 @@ public class SceneMgrScript:MonoBehaviour {
     [Header("Scene Objects")]
     public Camera mainCamera;
     public Light ceilingLamp;
+    public Light ambientLightSource;
 
     [Header("Arduino I/O")]
     public string sPort = "COM4";
@@ -33,7 +34,7 @@ public class SceneMgrScript:MonoBehaviour {
     [System.Serializable]
     public class AnimFrame
     {
-        public UnityEngine.Object model;
+        public GameObject model;
         public int duration = 1;
     }
 
@@ -43,21 +44,58 @@ public class SceneMgrScript:MonoBehaviour {
         public List<AnimFrame> work;
         public List<AnimFrame> switchLight;
         public int switchLightOnFrame;
+
+        private int currentAnim = 0;
+        private int currentFrame = 0;
+
+        public int ChangeAnimation(int which)
+        {
+            if (which == 0 || which == 1)
+            {
+                currentAnim = which;
+                currentFrame = -1;
+                return NextFrame().frameObj.duration;
+            }
+            return -1;
+        }
+        
+        public (AnimFrame frameObj, int number) NextFrame()
+        {
+            foreach (AnimFrame frame in work) frame.model.SetActive(false);
+            foreach (AnimFrame frame in switchLight) frame.model.SetActive(false);
+            currentFrame++;
+            AnimFrame currentFrameObj = null;
+            switch (currentAnim)
+            {
+                case 0:
+                    if (currentFrame >= work.Count) currentFrame = 0;
+                    currentFrameObj = work[currentFrame];
+                    break;
+                case 1:
+                    if (currentFrame >= switchLight.Count) currentFrame = 0;
+                    currentFrameObj = switchLight[currentFrame];
+                    break;
+            }
+            currentFrameObj.model.SetActive(true);
+            return (currentFrameObj, currentFrame);
+        }
     }
 
     [Header("Animation")]
+    public float framesPerSecond = 8f;
     public AnimList animations;
 
     private int readingCount = 0;
     private int[] readings;
     private int readIndex = 0;
     private int readingTotal = 0;
-    private float readingAvg = 0;
+    private float readingAvg = 0f;
 
     private bool lightsOn = false;
     private bool lightsShouldBeOn = false;
     private bool guyWorking = true;
-    private float sinceLastAnimFrame = 0;
+    private float sinceLastAnimFrame = 0f;
+    private float currentFrameDuration = 1f;
 
     private Color skyColor = new Color();
     private Color ambientColor = new Color();
@@ -76,6 +114,8 @@ public class SceneMgrScript:MonoBehaviour {
         }
         readingTotal = initialReading * readingCount;
         readingAvg = initialReading;
+
+        animations.ChangeAnimation(0);
     }
 
     void Update()
@@ -98,37 +138,53 @@ public class SceneMgrScript:MonoBehaviour {
         ambientColor = Color.Lerp(Color.black, skyColor, skyAmbientStrength);
         if (lightsOn) ambientColor += Color.Lerp(Color.black, ceilingLamp.color, lampAmbientStrength);
         RenderSettings.ambientSkyColor = ambientColor;
+        ambientLightSource.color = ambientColor;
 
+        sinceLastAnimFrame += Time.deltaTime * framesPerSecond;
         if (guyWorking)
         {
+            if (sinceLastAnimFrame >= currentFrameDuration)
+            {
+                currentFrameDuration = animations.NextFrame().frameObj.duration;
+                sinceLastAnimFrame = 0;
+            }
+
             if (readingAvg < nightUnder && !lightsOn)
             {
                 lightsShouldBeOn = true;
+                // "Night already?!"
                 guyWorking = false;
                 sinceLastAnimFrame = 0;
-                // Play "turning lights on" animation
-                Debug.Log("Night already?!");
+                currentFrameDuration = animations.ChangeAnimation(1);
             }
             if (readingAvg > dayOver && lightsOn)
             {
                 lightsShouldBeOn = false;
+                // "Night already?!"
                 guyWorking = false;
                 sinceLastAnimFrame = 0;
-                // Play "turning lights off" animation
-                Debug.Log("Morning already?!");
+                currentFrameDuration = animations.ChangeAnimation(1);
             }
         }
         else
         {
-            // Manage turning on/off light animation
-            sinceLastAnimFrame += Time.deltaTime;
-            if (sinceLastAnimFrame > 1)
+            if (sinceLastAnimFrame >= currentFrameDuration)
             {
-                lightsOn = lightsShouldBeOn;
-                ceilingLamp.gameObject.SetActive(lightsOn);
-                Debug.Log($"*Click!* Lights {(lightsOn ? "on" : "off")}!");
-                guyWorking = true;
+                (AnimFrame currentFrameObj, int currentFrameNumber) = animations.NextFrame();
+                currentFrameDuration = currentFrameObj.duration;
                 sinceLastAnimFrame = 0;
+
+                if (currentFrameNumber == 0)
+                {
+                    guyWorking = true;
+                    sinceLastAnimFrame = 0;
+                    currentFrameDuration = animations.ChangeAnimation(0);
+                }
+                if (currentFrameNumber == animations.switchLightOnFrame)
+                {
+                    lightsOn = lightsShouldBeOn;
+                    ceilingLamp.gameObject.SetActive(lightsOn);
+                }
             }
         }
 
