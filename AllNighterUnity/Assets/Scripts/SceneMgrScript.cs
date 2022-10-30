@@ -102,7 +102,6 @@ public class SceneMgrScript:MonoBehaviour {
 
     void Start()
     {
-        ceilingLamp.gameObject.SetActive(lightsOn);
         stream = new SerialPort(sPort, baud);
         stream.Open(); // Open serial stream
         int initialReading = int.Parse(stream.ReadLine());
@@ -114,7 +113,9 @@ public class SceneMgrScript:MonoBehaviour {
         }
         readingTotal = initialReading * readingCount;
         readingAvg = initialReading;
-
+        if (initialReading <= nightUnder) lightsOn = lightsShouldBeOn = true;
+            
+        ceilingLamp.gameObject.SetActive(lightsOn);
         animations.ChangeAnimation(0);
     }
 
