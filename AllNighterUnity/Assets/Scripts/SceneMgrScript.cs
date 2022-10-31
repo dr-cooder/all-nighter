@@ -2,6 +2,7 @@ using System; // For catching exceptions
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using TMPro;
 using System.IO.Ports; // For serial
 
 public class SceneMgrScript:MonoBehaviour {
@@ -9,6 +10,7 @@ public class SceneMgrScript:MonoBehaviour {
     public Camera mainCamera;
     public Light ceilingLamp;
     public Light ambientLightSource;
+    public TextMeshProUGUI subtitles;
 
     [Header("Arduino I/O")]
     public string sPort = "COM4";
@@ -44,6 +46,7 @@ public class SceneMgrScript:MonoBehaviour {
         public List<AnimFrame> work;
         public List<AnimFrame> switchLight;
         public int switchLightOnFrame;
+        public int endSubtitleOnFrame;
 
         private int currentAnim = 0;
         private int currentFrame = 0;
@@ -97,8 +100,8 @@ public class SceneMgrScript:MonoBehaviour {
     private float sinceLastAnimFrame = 0f;
     private float currentFrameDuration = 1f;
 
-    private Color skyColor = new Color();
-    private Color ambientColor = new Color();
+    private Color skyColor = new();
+    private Color ambientColor = new();
 
     void Start()
     {
@@ -117,13 +120,14 @@ public class SceneMgrScript:MonoBehaviour {
             
         ceilingLamp.gameObject.SetActive(lightsOn);
         animations.ChangeAnimation(0);
+        subtitles.text = "";
     }
 
     void Update()
     {
-        readingTotal -= readings[readIndex];
         int newReading = int.Parse(stream.ReadLine());
         if (lightsOn) newReading -= ledBias;
+        readingTotal -= readings[readIndex];
         readings[readIndex] = newReading;
         readingTotal += readings[readIndex];
         readIndex++;
@@ -153,7 +157,7 @@ public class SceneMgrScript:MonoBehaviour {
             if (readingAvg < nightUnder && !lightsOn)
             {
                 lightsShouldBeOn = true;
-                // "Night already?!"
+                subtitles.text = "Night already?!";
                 guyWorking = false;
                 sinceLastAnimFrame = 0;
                 currentFrameDuration = animations.ChangeAnimation(1);
@@ -161,7 +165,7 @@ public class SceneMgrScript:MonoBehaviour {
             if (readingAvg > dayOver && lightsOn)
             {
                 lightsShouldBeOn = false;
-                // "Night already?!"
+                subtitles.text = "Morning already?!";
                 guyWorking = false;
                 sinceLastAnimFrame = 0;
                 currentFrameDuration = animations.ChangeAnimation(1);
@@ -185,6 +189,10 @@ public class SceneMgrScript:MonoBehaviour {
                 {
                     lightsOn = lightsShouldBeOn;
                     ceilingLamp.gameObject.SetActive(lightsOn);
+                }
+                if (currentFrameNumber == animations.endSubtitleOnFrame)
+                {
+                    subtitles.text = "";
                 }
             }
         }
